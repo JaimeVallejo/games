@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ludoteca | Bento Design (Cloud)</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        bento: {
+                            purple: '#9d4edd', orange: '#f97316', lime: '#bef264',
+                            black: '#1e293b', gray: '#f8fafc', card: '#ffffff'
+                        }
+                    },
+                    borderRadius: { '4xl': '2rem', '5xl': '2.5rem' },
+                    boxShadow: { 'bento': '0 4px 20px -2px rgba(0, 0, 0, 0.05)' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; 
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-fade { animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-pulse-soft { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; }
+        select { -webkit-appearance: none; appearance: none; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-[100dvh] w-full flex flex-col overflow-hidden">
+
+    <main class="flex-1 overflow-hidden relative">
+        
+        <!-- PESTAÑA 1: LUDOTECA -->
+        <section id="tab-ludoteca" class="tab-content active flex-col h-full">
+            <div class="bg-[#f8fafc] z-10 shrink-0 pt-8 pb-4 px-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Ludoteca.</h1>
+                    <div id="cloud-status" class="flex items-center gap-1.5 text-[10px] font-bold text-bento-purple bg-bento-purple/10 px-2 py-1 rounded-full opacity-0 transition-opacity">
+                        <i data-lucide="cloud-check" class="w-3 h-3"></i> Nube Activa
+                    </div>
+                </div>
+                
+                <div class="relative mb-4">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                    <input type="text" id="filter-search" placeholder="Buscar juego..." 
+                        class="w-full pl-12 pr-5 py-3.5 bg-white shadow-bento rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-bento-purple transition-all">
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                    <div class="relative shrink-0">
+                        <select id="filter-vibe" class="bg-bento-purple text-white font-semibold text-xs rounded-full pl-4 pr-8 py-2.5 outline-none shadow-sm">
+                            <option value="all">Categoría</option>
+                            <option value="fiesta">Fiesta</option>
+                            <option value="familia">Familia</option>
+                            <option value="estrategia">Estrategia</option>
+                            <option value="narrativo">Narrativo</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white pointer-events-none"></i>
+                    </div>
+                    <div class="relative shrink-0">
+                        <select id="filter-players" class="bg-bento-orange text-white font-semibold text-xs rounded-full pl-4 pr-8 py-2.5 outline-none shadow-sm">
+                            <option value="all">Jugadores</option>
+                            <option value="2">2 jug.</option>
+                            <option value="4">4 jug.</option>
+                            <option value="6">6 jug.</option>
+                            <option value="8">8+ jug.</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white pointer-events-none"></i>
+                    </div>
+                    <div class="relative shrink-0">
+                        <select id="filter-time" class="bg-bento-lime text-bento-black font-semibold text-xs rounded-full pl-4 pr-8 py-2.5 outline-none shadow-sm">
+                            <option value="all">Tiempo</option>
+                            <option value="short">≤ 20 min</option>
+                            <option value="medium">21-45 min</option>
+                            <option value="long">> 45 min</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-bento-black pointer-events-none"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-6 py-2 hide-scrollbar">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-bold text-slate-400 tracking-wider uppercase">Juegos Encontrados</span>
+                    <span id="stats-text" class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">-</span>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loading-state" class="flex flex-col items-center justify-center py-20 text-center">
+                    <i data-lucide="loader-2" class="w-10 h-10 text-bento-purple animate-spin mb-4"></i>
+                    <p class="text-bento-black font-bold text-sm">Descargando ludoteca...</p>
+                    <p class="text-slate-400 text-xs mt-1">Conectando con Google Sheets</p>
+                </div>
+
+                <div id="games-grid" class="hidden grid-cols-1 sm:grid-cols-2 gap-5 pb-24">
+                    <!-- Tarjetas Bento inyectadas por JS -->
+                </div>
+                
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-center bg-white rounded-4xl shadow-bento">
+                    <i data-lucide="layout-grid" class="w-12 h-12 text-slate-200 mb-3"></i>
+                    <p class="text-slate-400 font-medium text-sm">Ajusta los filtros para ver resultados.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 2: CALCULADORA -->
+        <section id="tab-scores" class="tab-content flex-col h-full bg-[#f8fafc]">
+            <div class="px-6 pt-8 pb-4 shrink-0 flex justify-between items-center">
+                <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Puntos.</h1>
+                <button onclick="resetScores()" class="w-10 h-10 flex items-center justify-center bg-slate-200 text-slate-600 rounded-full active:scale-95 transition-transform">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto px-6 py-2 flex flex-col gap-4 hide-scrollbar" id="score-list">
+                <!-- Jugadores inyectados por JS -->
+            </div>
+
+            <div class="p-6 shrink-0 pb-24">
+                <form id="add-player-form" class="flex gap-3 bg-white p-2 rounded-full shadow-bento border border-slate-100">
+                    <input type="text" id="new-player-name" placeholder="Nuevo jugador..." required class="flex-1 px-4 py-2 bg-transparent text-sm font-medium outline-none">
+                    <button type="submit" class="w-10 h-10 shrink-0 bg-bento-black text-white rounded-full flex items-center justify-center active:scale-95 transition-transform">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 3: TURNOS -->
+        <section id="tab-turns" class="tab-content flex-col h-full bg-[#f8fafc]">
+            <div class="px-6 pt-8 pb-4 shrink-0">
+                <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Ronda.</h1>
+            </div>
+            
+            <div class="flex-1 flex flex-col items-center justify-center p-6 pb-24">
+                <div class="bg-bento-orange w-full max-w-sm rounded-[3rem] p-12 flex flex-col items-center justify-center shadow-lg relative overflow-hidden mb-8">
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full"></div>
+                    <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-white opacity-10 rounded-full"></div>
+                    
+                    <span class="text-white text-sm font-bold tracking-widest uppercase mb-2 opacity-80">Ronda Actual</span>
+                    <div id="turn-display" class="text-[9rem] leading-none font-black text-white tabular-nums">1</div>
+                </div>
+                
+                <div class="flex gap-4">
+                    <button onclick="updateTurn(-1)" class="w-20 h-20 bg-white shadow-bento rounded-full flex items-center justify-center text-bento-black active:scale-95 transition-transform">
+                        <i data-lucide="minus" class="w-8 h-8"></i>
+                    </button>
+                    <button onclick="resetTurn()" class="w-20 h-20 bg-slate-200 text-slate-500 rounded-full flex items-center justify-center active:scale-95 transition-transform">
+                        <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
+                    </button>
+                    <button onclick="updateTurn(1)" class="w-20 h-20 bg-bento-black shadow-bento rounded-full flex items-center justify-center text-white active:scale-95 transition-transform">
+                        <i data-lucide="plus" class="w-8 h-8"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PESTAÑA 4: TIEMPO -->
+        <section id="tab-timer" class="tab-content flex-col h-full bg-[#f8fafc]">
+            <div class="px-6 pt-8 pb-4 shrink-0">
+                <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Tiempo.</h1>
+            </div>
+
+            <div class="flex-1 flex flex-col p-6 pb-24">
+                <div class="bg-white rounded-4xl p-2 flex gap-2 shadow-bento mb-6">
+                    <button onclick="setTimerMode('stopwatch')" id="btn-mode-sw" class="flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-purple text-white transition-all">Cronómetro</button>
+                    <button onclick="setTimerMode('countdown')" id="btn-mode-cd" class="flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all">Temporizador</button>
+                </div>
+
+                <div id="timer-bento" class="flex-1 bg-bento-purple rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500">
+                    <div id="time-display" class="text-7xl sm:text-8xl font-black tabular-nums text-white tracking-tighter">00:00</div>
+                    
+                    <div id="timer-inputs" class="hidden flex gap-4 z-10">
+                        <input type="number" id="input-min" placeholder="00" min="0" max="99" class="w-24 bg-white/20 rounded-2xl text-white text-center text-5xl py-4 font-black outline-none placeholder:text-white/30 focus:bg-white/30 transition-all">
+                        <span class="text-5xl py-4 text-white/50 font-black">:</span>
+                        <input type="number" id="input-sec" placeholder="00" min="0" max="59" class="w-24 bg-white/20 rounded-2xl text-white text-center text-5xl py-4 font-black outline-none placeholder:text-white/30 focus:bg-white/30 transition-all">
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-6 justify-center">
+                    <button onclick="resetTimer()" class="w-20 h-20 rounded-full bg-white text-slate-400 flex items-center justify-center active:scale-95 transition-transform shadow-bento">
+                        <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
+                    </button>
+                    <button onclick="toggleTimer()" id="btn-timer-toggle" class="w-32 h-20 rounded-full bg-bento-lime text-bento-black flex items-center justify-center shadow-bento active:scale-95 transition-transform">
+                        <i data-lucide="play" id="icon-timer-toggle" class="w-8 h-8 fill-bento-black"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-white/90 backdrop-blur-xl border border-white/50 shadow-bento rounded-[2rem] z-50 px-2 py-2">
+        <div class="flex justify-around items-center h-14">
+            <button onclick="switchTab('ludoteca')" class="nav-btn active flex-1 flex flex-col items-center justify-center h-full text-slate-400 transition-all" data-target="tab-ludoteca">
+                <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                </div>
+            </button>
+            <button onclick="switchTab('scores')" class="nav-btn flex-1 flex flex-col items-center justify-center h-full text-slate-400 transition-all" data-target="tab-scores">
+                <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="calculator" class="w-5 h-5"></i>
+                </div>
+            </button>
+            <button onclick="switchTab('turns')" class="nav-btn flex-1 flex flex-col items-center justify-center h-full text-slate-400 transition-all" data-target="tab-turns">
+                <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="hash" class="w-5 h-5"></i>
+                </div>
+            </button>
+            <button onclick="switchTab('timer')" class="nav-btn flex-1 flex flex-col items-center justify-center h-full text-slate-400 transition-all" data-target="tab-timer">
+                <div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="clock-3" class="w-5 h-5"></i>
+                </div>
+            </button>
+        </div>
+    </nav>
+    <style>
+        .nav-btn.active { color: #1e293b; }
+        .nav-btn.active .icon-bg { background-color: #f1f5f9; }
+        .nav-btn.active i { fill: currentColor; }
+    </style>
+
+    <script>
+        // ==========================================
+        // 1. CONFIGURACIÓN API (CLOUD DATA)
+        // ==========================================
+        // 👇 URL de tu Google Apps Script conectada 👇
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSYKqoRn7qJNKhLd-Z1IlFFxX1QkbibewaBHBJbuUy436GSZHurBJ06lIZ6XhM4mutUA/exec';
+        
+        let games = [];
+        
+        // Mapeo de colores Bento
+        const typeColors = {
+            'fiesta': 'bg-bento-orange text-white',
+            'familia': 'bg-bento-lime text-bento-black',
+            'estrategia': 'bg-bento-purple text-white',
+            'narrativo': 'bg-bento-black text-white'
+        };
+
+        const grid = document.getElementById('games-grid');
+        const emptyState = document.getElementById('empty-state');
+        const loadingState = document.getElementById('loading-state');
+        const cloudStatus = document.getElementById('cloud-status');
+        const stats = document.getElementById('stats-text');
+
+        // Fetch de la base de datos
+        async function fetchLudoteca() {
+            if (!SCRIPT_URL) {
+                loadingState.innerHTML = `
+                    <i data-lucide="alert-circle" class="w-10 h-10 text-bento-orange mb-4"></i>
+                    <p class="text-bento-black font-bold text-sm">Falta la URL del Script</p>
+                    <p class="text-slate-400 text-xs mt-1 max-w-xs">Pega tu SCRIPT_URL en la línea 304 del código para conectar con Google Sheets.</p>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const rawData = await response.json();
+                
+                games = rawData.map((g, i) => ({
+                    id: g.ID,
+                    name: g.Nombre,
+                    time: g.Tiempo,
+                    maxT: parseInt(g.Max_T) || 0,
+                    minP: parseInt(g.Min_P) || 0,
+                    maxP: parseInt(g.Max_P) || 0,
+                    p: g.Jugadores,
+                    diff: g.Dificultad,
+                    type: g.Categoria.toLowerCase(),
+                    mech: g.Mecanicas,
+                    image: g.Imagen || `https://placehold.co/400x300/e2e8f0/475569?text=${encodeURIComponent(g.Nombre)}&font=montserrat`,
+                    bggUrl: g.BGG_URL,
+                    rating: parseInt(g.Puntaje) || 0,
+                    plays: parseInt(g.Veces_Jugado) || 0,
+                    colorClass: typeColors[g.Categoria.toLowerCase()] || 'bg-slate-200 text-slate-800'
+                }));
+
+                loadingState.classList.add('hidden');
+                grid.classList.remove('hidden');
+                grid.classList.add('grid');
+                cloudStatus.style.opacity = '1';
+                
+                renderLudoteca();
+            } catch (error) {
+                console.error("Error cargando DB:", error);
+                loadingState.innerHTML = `<p class="text-red-500 font-bold">Error de conexión con la nube.</p>`;
+            }
+        }
+
+        // Función para enviar updates a Google Sheets
+        function updateBackend(id, field, value) {
+            if(!SCRIPT_URL) return;
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ id, field, value }),
+                headers: { 'Content-Type': 'text/plain' }
+            }).catch(e => console.error("Error al guardar en nube", e));
+        }
+
+        // Acciones interactivas (Actualizan UI instantáneo y envían a backend)
+        window.rateGame = (e, gameId, rating) => {
+            e.preventDefault();
+            const game = games.find(g => g.id === gameId);
+            game.rating = game.rating === rating ? 0 : rating; 
+            
+            document.getElementById(`stars-${gameId}`).innerHTML = renderStars(gameId, game.rating);
+            lucide.createIcons();
+            
+            // Background Update
+            updateBackend(gameId, 'Puntaje', game.rating);
+        };
+
+        window.logPlay = (e, gameId) => {
+            e.preventDefault();
+            const game = games.find(g => g.id === gameId);
+            game.plays += 1;
+            
+            const badge = document.getElementById(`plays-${gameId}`);
+            badge.innerHTML = `<i data-lucide="check-circle-2" class="w-3.5 h-3.5 mr-1 text-bento-lime"></i> ${game.plays} jugadas`;
+            badge.classList.add('bg-bento-black', 'text-white');
+            badge.classList.remove('bg-slate-100', 'text-slate-600');
+            lucide.createIcons();
+            
+            // Background Update
+            updateBackend(gameId, 'Veces_Jugado', game.plays);
+        };
+
+        // UI Helpers
+        function renderStars(gameId, rating) {
+            let html = '';
+            for(let i=1; i<=5; i++) {
+                const filled = i <= rating;
+                html += `<i data-lucide="star" onclick="rateGame(event, '${gameId}', ${i})" 
+                         class="w-4 h-4 cursor-pointer transition-colors ${filled ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200 fill-slate-50'}"></i>`;
+            }
+            return html;
+        }
+
+        const sInput = document.getElementById('filter-search');
+        const tFilter = document.getElementById('filter-time');
+        const pFilter = document.getElementById('filter-players');
+        const vFilter = document.getElementById('filter-vibe');
+
+        function renderLudoteca() {
+            if(!games.length) return; // Wait for fetch
+
+            const txt = sInput.value.toLowerCase();
+            const timeV = tFilter.value;
+            const pV = pFilter.value;
+            const vibeV = vFilter.value;
+
+            const filtered = games.filter(g => {
+                const matchTxt = !txt || g.name.toLowerCase().includes(txt) || g.mech.toLowerCase().includes(txt);
+                const matchT = timeV === 'all' || (timeV === 'short' && g.maxT <= 20) || (timeV === 'medium' && g.maxT > 20 && g.maxT <= 45) || (timeV === 'long' && g.maxT > 45);
+                const matchP = pV === 'all' || (g.minP <= parseInt(pV) && g.maxP >= parseInt(pV));
+                const matchV = vibeV === 'all' || g.type === vibeV;
+                return matchTxt && matchT && matchP && matchV;
+            });
+
+            stats.textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                grid.classList.remove('grid');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                grid.classList.remove('hidden');
+                grid.classList.add('grid');
+                
+                grid.innerHTML = filtered.map((g, i) => `
+                    <div class="bg-white rounded-4xl p-2 shadow-bento flex flex-col animate-fade border border-slate-50" style="animation-delay: ${i * 0.05}s">
+                        <div class="h-32 rounded-3xl overflow-hidden relative mb-3">
+                            <img src="${g.image}" class="w-full h-full object-cover">
+                            <span class="absolute top-3 left-3 ${g.colorClass} text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                                ${g.type}
+                            </span>
+                        </div>
+                        <div class="px-3 pb-2 flex flex-col flex-1">
+                            <h3 class="font-extrabold text-bento-black text-[15px] leading-tight mb-1 truncate">${g.name}</h3>
+                            <p class="text-xs text-slate-400 font-medium mb-3 truncate capitalize">${g.mech}</p>
+                            
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex gap-2">
+                                    <span class="flex items-center text-[11px] font-bold text-slate-600"><i data-lucide="users" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>${g.p}</span>
+                                    <span class="flex items-center text-[11px] font-bold text-slate-600"><i data-lucide="clock" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>${g.time}</span>
+                                </div>
+                                <button id="plays-${g.id}" onclick="logPlay(event, '${g.id}')" class="flex items-center text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full transition-colors active:scale-95">
+                                    <i data-lucide="dices" class="w-3.5 h-3.5 mr-1"></i> ${g.plays} jugadas
+                                </button>
+                            </div>
+                            
+                            <div class="flex justify-between items-center mt-auto bg-slate-50 rounded-2xl p-2">
+                                <div id="stars-${g.id}" class="flex gap-1">
+                                    ${renderStars(g.id, g.rating)}
+                                </div>
+                                <a href="${g.bggUrl}" target="_blank" class="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-bento-black hover:bg-slate-100 transition-colors">
+                                    <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            lucide.createIcons();
+        }
+
+        [sInput, tFilter, pFilter, vFilter].forEach(el => el.addEventListener('input', renderLudoteca));
+        [sInput, tFilter, pFilter, vFilter].forEach(el => el.addEventListener('change', renderLudoteca));
+
+
+        // ==========================================
+        // 2. CALCULADORA DE PUNTAJES
+        // ==========================================
+        let players = [];
+        const scoreList = document.getElementById('score-list');
+        const addPlayerForm = document.getElementById('add-player-form');
+        const newPlayerInput = document.getElementById('new-player-name');
+        const cardColors = ['bg-bento-purple text-white', 'bg-bento-orange text-white', 'bg-bento-lime text-bento-black', 'bg-bento-black text-white'];
+
+        function renderScores() {
+            if (players.length === 0) {
+                scoreList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full bg-white rounded-4xl border border-slate-100 shadow-sm p-8 text-slate-400">
+                        <i data-lucide="user-plus" class="w-12 h-12 mb-4 opacity-50"></i>
+                        <p class="text-sm font-medium">Agrega jugadores para iniciar</p>
+                    </div>`;
+            } else {
+                const sorted = [...players].sort((a,b) => b.score - a.score);
+                
+                scoreList.innerHTML = sorted.map((p, index) => {
+                    const colorCombo = cardColors[index % cardColors.length];
+                    const isDarkText = colorCombo.includes('text-bento-black');
+                    const btnBg = isDarkText ? 'bg-white/50 hover:bg-white text-bento-black' : 'bg-white/20 hover:bg-white/30 text-white';
+                    
+                    return `
+                    <div class="${colorCombo} rounded-[2rem] p-5 flex flex-col gap-4 animate-fade shadow-sm transition-all relative overflow-hidden">
+                        ${index === 0 && p.score > 0 ? `<div class="absolute -right-4 -top-4 w-16 h-16 bg-white/20 rounded-full flex items-end justify-start p-3"><i data-lucide="crown" class="w-5 h-5 ${isDarkText ? 'text-black' : 'text-white'} fill-current"></i></div>` : ''}
+                        
+                        <div class="flex justify-between items-center z-10">
+                            <span class="font-bold text-lg">${p.name}</span>
+                            <span class="text-4xl font-black tabular-nums">${p.score}</span>
+                        </div>
+                        <div class="flex gap-2 justify-between z-10">
+                            <button onclick="updateScore('${p.id}', -1)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold text-sm transition-colors">-1</button>
+                            <button onclick="updateScore('${p.id}', 1)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold text-sm transition-colors">+1</button>
+                            <button onclick="updateScore('${p.id}', 5)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold text-sm transition-colors">+5</button>
+                            <button onclick="removePlayer('${p.id}')" class="w-10 flex flex-shrink-0 items-center justify-center rounded-2xl ${btnBg} transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                `}).join('');
+            }
+            lucide.createIcons();
+        }
+
+        addPlayerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = newPlayerInput.value.trim();
+            if(name) {
+                players.push({ id: Date.now().toString(), name, score: 0 });
+                newPlayerInput.value = '';
+                renderScores();
+                scoreList.scrollTo({ top: scoreList.scrollHeight, behavior: 'smooth' });
+            }
+        });
+
+        window.updateScore = (id, change) => {
+            const p = players.find(x => x.id === id);
+            if(p) { p.score += change; renderScores(); }
+        };
+        window.removePlayer = (id) => { players = players.filter(x => x.id !== id); renderScores(); };
+        window.resetScores = () => { players.forEach(p => p.score = 0); renderScores(); };
+
+        // 3. TURNOS
+        let currentTurn = 1;
+        const turnDisplay = document.getElementById('turn-display');
+
+        window.updateTurn = (val) => {
+            currentTurn = Math.max(1, currentTurn + val);
+            turnDisplay.textContent = currentTurn;
+            turnDisplay.style.transform = 'scale(1.1)';
+            setTimeout(() => turnDisplay.style.transform = 'scale(1)', 150);
+        };
+        window.resetTurn = () => { currentTurn = 1; turnDisplay.textContent = currentTurn; };
+
+        // 4. TIEMPO
+        let timerMode = 'stopwatch';
+        let timerInterval = null;
+        let timeInSeconds = 0;
+        let isTimerRunning = false;
+
+        const timeDisplay = document.getElementById('time-display');
+        const timerInputs = document.getElementById('timer-inputs');
+        const iconToggle = document.getElementById('icon-timer-toggle');
+        const btnSw = document.getElementById('btn-mode-sw');
+        const btnCd = document.getElementById('btn-mode-cd');
+        const inpMin = document.getElementById('input-min');
+        const inpSec = document.getElementById('input-sec');
+        const timerBento = document.getElementById('timer-bento');
+
+        function formatTime(totalSeconds) {
+            const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const s = (totalSeconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function updateTimeDisplay() { timeDisplay.textContent = formatTime(timeInSeconds); }
+
+        window.setTimerMode = (mode) => {
+            if(isTimerRunning) window.toggleTimer();
+            timerMode = mode;
+            timeInSeconds = 0;
+            updateTimeDisplay();
+            
+            if(mode === 'stopwatch') {
+                btnSw.className = "flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-purple text-white shadow-md transition-all";
+                btnCd.className = "flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all";
+                timerBento.className = "flex-1 bg-bento-purple rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500";
+                timerInputs.classList.add('hidden');
+                timeDisplay.classList.remove('hidden');
+            } else {
+                btnCd.className = "flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-black text-white shadow-md transition-all";
+                btnSw.className = "flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all";
+                timerBento.className = "flex-1 bg-bento-black rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500";
+                timerInputs.classList.remove('hidden');
+                timeDisplay.classList.add('hidden');
+            }
+        };
+
+        window.toggleTimer = () => {
+            if(isTimerRunning) {
+                clearInterval(timerInterval);
+                iconToggle.setAttribute('data-lucide', 'play');
+            } else {
+                if(timerMode === 'countdown' && timeInSeconds === 0) {
+                    const m = parseInt(inpMin.value) || 0;
+                    const s = parseInt(inpSec.value) || 0;
+                    timeInSeconds = (m * 60) + s;
+                    if(timeInSeconds === 0) return;
+                    timerInputs.classList.add('hidden');
+                    timeDisplay.classList.remove('hidden');
+                    updateTimeDisplay();
+                }
+                timerInterval = setInterval(() => {
+                    if(timerMode === 'stopwatch') {
+                        timeInSeconds++;
+                    } else {
+                        timeInSeconds--;
+                        if(timeInSeconds <= 0) {
+                            clearInterval(timerInterval);
+                            timeInSeconds = 0;
+                            iconToggle.setAttribute('data-lucide', 'play');
+                            isTimerRunning = false;
+                            lucide.createIcons();
+                            timerBento.classList.replace('bg-bento-black', 'bg-bento-orange');
+                            setTimeout(() => timerBento.classList.replace('bg-bento-orange', 'bg-bento-black'), 1500);
+                        }
+                    }
+                    updateTimeDisplay();
+                }, 1000);
+                iconToggle.setAttribute('data-lucide', 'pause');
+            }
+            isTimerRunning = !isTimerRunning;
+            lucide.createIcons();
+        };
+
+        window.resetTimer = () => {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            timeInSeconds = 0;
+            updateTimeDisplay();
+            iconToggle.setAttribute('data-lucide', 'play');
+            
+            if(timerMode === 'countdown') {
+                timerInputs.classList.remove('hidden');
+                timeDisplay.classList.add('hidden');
+            }
+            lucide.createIcons();
+        };
+
+        // NAVEGACIÓN
+        window.switchTab = (tabName) => {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.target === `tab-${tabName}`) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        };
+
+        // Inicio
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            fetchLudoteca(); // Inicia la conexión a la base de datos local
+            renderScores();
+        });
+    </script>
+</body>
+</html>
