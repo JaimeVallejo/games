@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LudosApp</title>
+    <title>Ludoteca | Data Persistente</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,7 @@
                         }
                     },
                     borderRadius: { '4xl': '2rem', '5xl': '2.5rem' },
-                    boxShadow: { 'bento': '0 4px 20px -2px rgba(0, 0, 0, 0.05)' }
+                    boxShadow: { 'bento': '0 4px 20px -2px rgba(0, 0, 0, 0.05)', 'modal': '0 -10px 40px -10px rgba(0,0,0,0.1)' }
                 }
             }
         }
@@ -34,27 +34,98 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-fade { animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .tab-content { display: none; }
         .tab-content.active { display: flex; }
         select { -webkit-appearance: none; appearance: none; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #9d4edd; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .nav-btn.active { color: #1e293b; }
+        .nav-btn.active .icon-bg { background-color: #f1f5f9; }
+        .nav-btn.active i { fill: currentColor; }
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem); }
+        /* Reset search cancel button inside datalist input */
+        input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
     </style>
 </head>
 <body class="text-slate-800 antialiased h-[100dvh] w-full flex flex-col overflow-hidden relative">
 
     <div id="loading-screen" class="absolute inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="w-12 h-12 border-4 border-slate-200 border-t-bento-purple rounded-full animate-spin mb-4"></div>
-        <h2 class="text-xl font-extrabold text-bento-black">Cargando Ludoteca</h2>
-        <p class="text-sm text-slate-400">Sincronizando red social...</p>
+        <div class="loader mb-4"></div>
+        <h2 class="text-xl font-extrabold text-bento-black">Cargando Nube</h2>
+        <p class="text-sm text-slate-400 text-center mt-2 px-6">Obteniendo juegos y puntajes de jugadores...</p>
     </div>
 
+    <!-- DATALIST GLOBAL PARA BUSCAR JUEGOS -->
+    <datalist id="games-datalist"></datalist>
+
+    <!-- MODAL DETALLE DE JUEGO -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-bento-black/40 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300" onclick="closeModal('game-modal')"></div>
+    <div id="game-modal" class="fixed bottom-0 left-0 w-full max-h-[95dvh] bg-white rounded-t-[2.5rem] z-[70] transform translate-y-full transition-transform duration-300 shadow-modal flex flex-col hidden">
+        <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 shrink-0"></div>
+        <div id="modal-content" class="overflow-y-auto px-6 py-6 pb-safe hide-scrollbar flex flex-col gap-4"></div>
+    </div>
+
+    <!-- MODAL ESTADÍSTICAS -->
+    <div id="stats-backdrop" class="fixed inset-0 bg-bento-black/40 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300" onclick="closeModal('stats-modal')"></div>
+    <div id="stats-modal" class="fixed bottom-0 left-0 w-full max-h-[90dvh] bg-white rounded-t-[2.5rem] z-[70] transform translate-y-full transition-transform duration-300 shadow-modal flex flex-col hidden">
+        <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 shrink-0"></div>
+        <div class="overflow-y-auto px-6 py-6 pb-safe hide-scrollbar flex flex-col gap-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-3xl font-black text-bento-black">Estadísticas</h2>
+                <button onclick="closeModal('stats-modal')" class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i data-lucide="bar-chart-2" class="w-4 h-4 inline mr-1"></i> Top 3 Juegos Más Jugados</h3>
+                <div id="stats-top-games" class="flex flex-col gap-3"></div>
+            </div>
+            <div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i data-lucide="crown" class="w-4 h-4 inline mr-1"></i> Salón de la Fama (Jugadores)</h3>
+                <div id="stats-top-players" class="flex flex-col gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL REGISTRAR VICTORIA (Desde Jugador) -->
+    <div id="win-backdrop" class="fixed inset-0 bg-bento-black/40 backdrop-blur-sm z-[80] hidden opacity-0 transition-opacity duration-300" onclick="closeModal('win-modal')"></div>
+    <div id="win-modal" class="fixed bottom-0 left-0 w-full bg-white rounded-t-[2.5rem] z-[90] transform translate-y-full transition-transform duration-300 shadow-modal flex flex-col hidden p-6 pb-safe">
+        <h2 class="text-2xl font-black text-bento-black mb-4">Anotar Victoria 🏆</h2>
+        <p class="text-sm text-slate-500 mb-4" id="win-modal-player-name">Selecciona qué juego ganó:</p>
+        <input type="text" id="win-game-search" list="games-datalist" placeholder="Escribe para buscar el juego..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-bento-purple mb-4">
+        <button id="btn-confirm-win" class="w-full py-4 bg-bento-lime text-bento-black rounded-2xl font-bold shadow-sm active:scale-95 transition-transform mb-2">Confirmar Victoria</button>
+        <button onclick="closeModal('win-modal')" class="py-2 text-slate-400 font-bold">Cancelar</button>
+    </div>
+
+    <!-- MODAL AÑADIR JUEGO -->
+    <div id="add-game-backdrop" class="fixed inset-0 bg-bento-black/40 backdrop-blur-sm z-[80] hidden opacity-0 transition-opacity duration-300" onclick="closeModal('add-game-modal')"></div>
+    <div id="add-game-modal" class="fixed bottom-0 left-0 w-full max-h-[90dvh] bg-white rounded-t-[2.5rem] z-[90] transform translate-y-full transition-transform duration-300 shadow-modal flex flex-col hidden p-6 pb-safe overflow-y-auto">
+        <h2 class="text-2xl font-black text-bento-black mb-4">Nuevo Juego</h2>
+        <input type="text" id="add-g-name" placeholder="Nombre del juego *" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none mb-3" required>
+        <div class="flex gap-2 mb-3">
+            <input type="text" id="add-g-time" placeholder="Tiempo (ej. 30m)" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none">
+            <input type="text" id="add-g-p" placeholder="Jugadores (ej. 2-4)" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none">
+        </div>
+        <div class="flex gap-2 mb-3">
+            <select id="add-g-type" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none"><option value="fiesta">Fiesta</option><option value="familia">Familia</option><option value="estrategia">Estrategia</option><option value="narrativo">Narrativo</option></select>
+            <select id="add-g-diff" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none"><option value="Baja">Baja</option><option value="Media-baja">Media-baja</option><option value="Media">Media</option><option value="Alta">Alta</option></select>
+        </div>
+        <input type="text" id="add-g-img" placeholder="Link de la imagen (JPG/PNG)" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none mb-4">
+        <button onclick="submitNewGame()" class="w-full py-4 bg-bento-black text-white rounded-2xl font-bold shadow-md active:scale-95 transition-transform mb-2">Guardar en la Nube</button>
+        <button onclick="closeModal('add-game-modal')" class="py-2 text-slate-400 font-bold">Cancelar</button>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-1 overflow-hidden relative">
+        
+        <!-- PESTAÑA 1: LUDOTECA -->
         <section id="tab-ludoteca" class="tab-content active flex-col h-full">
-            <div class="bg-[#f8fafc] z-10 shrink-0 pt-8 pb-2 px-6">
+            <div class="bg-[#f8fafc] z-10 shrink-0 pt-8 pb-4 px-6">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Ludoteca.</h1>
                     <div class="flex gap-2">
-                        <button onclick="openAddGameModal()" class="w-10 h-10 bg-bento-black text-white rounded-full flex items-center justify-center shadow-md active:scale-95"><i data-lucide="plus"></i></button>
+                        <button onclick="openModal('stats-modal')" class="w-10 h-10 bg-slate-200 text-bento-black rounded-full flex items-center justify-center shadow-sm active:scale-95"><i data-lucide="bar-chart-2"></i></button>
+                        <button onclick="openModal('add-game-modal')" class="w-10 h-10 bg-bento-black text-white rounded-full flex items-center justify-center shadow-md active:scale-95"><i data-lucide="plus"></i></button>
                     </div>
                 </div>
                 
@@ -62,123 +133,60 @@
                     <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
                     <input type="text" id="filter-search" placeholder="Buscar juego..." class="w-full pl-12 pr-5 py-3.5 bg-white shadow-bento rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-bento-purple transition-all">
                 </div>
+
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                    <div class="relative shrink-0"><select id="filter-vibe" class="bg-bento-purple text-white font-semibold text-xs rounded-full pl-4 pr-8 py-2.5 outline-none shadow-sm"><option value="all">Categoría</option><option value="fiesta">Fiesta</option><option value="familia">Familia</option><option value="estrategia">Estrategia</option><option value="narrativo">Narrativo</option></select><i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white pointer-events-none"></i></div>
+                    <div class="relative shrink-0"><select id="filter-players" class="bg-bento-orange text-white font-semibold text-xs rounded-full pl-4 pr-8 py-2.5 outline-none shadow-sm"><option value="all">Jugadores</option><option value="2">2 jug.</option><option value="4">4 jug.</option><option value="6">6 jug.</option><option value="8">8+ jug.</option></select><i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white pointer-events-none"></i></div>
+                    <div class="relative shrink-0"><select id="filter-time" class="bg-bento-lime text-bento-black font-semibold text-xs rounded-full pl-4 pr-8 py-2.5 outline-none shadow-sm"><option value="all">Tiempo</option><option value="short">≤ 20 min</option><option value="medium">21-45 min</option><option value="long">> 45 min</option></select><i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-bento-black pointer-events-none"></i></div>
+                </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto px-6 py-2 hide-scrollbar pb-24">
-                
-                <div id="stats-panel" class="bg-white rounded-4xl p-5 shadow-bento mb-6 animate-fade">
-                    <div class="flex items-center gap-2 mb-4">
-                        <i data-lucide="bar-chart-2" class="text-bento-purple w-5 h-5"></i>
-                        <h2 class="font-extrabold text-bento-black text-sm uppercase tracking-wider">Top Más Jugados</h2>
-                    </div>
-                    <div id="stats-bars" class="flex flex-col gap-3">
-                        <!-- Barras inyectadas -->
-                    </div>
-                </div>
-
+            <div class="flex-1 overflow-y-auto px-6 py-2 hide-scrollbar">
                 <div class="flex justify-between items-center mb-4">
-                    <span class="text-xs font-bold text-slate-400 tracking-wider uppercase">Catálogo</span>
-                    <span id="stats-text" class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full"></span>
+                    <span class="text-xs font-bold text-slate-400 tracking-wider uppercase">Encontrados</span>
+                    <span id="stats-text" class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">-</span>
                 </div>
-                
-                <div id="games-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    <!-- Tarjetas inyectadas por JS -->
-                </div>
+                <div id="games-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 pb-24"></div>
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-center bg-white rounded-4xl shadow-bento"><i data-lucide="layout-grid" class="w-12 h-12 text-slate-200 mb-3"></i><p class="text-slate-400 font-medium text-sm">Ajusta los filtros.</p></div>
             </div>
         </section>
 
+        <!-- PESTAÑA 2: JUGADORES Y PUNTAJES -->
         <section id="tab-scores" class="tab-content flex-col h-full bg-[#f8fafc]">
             <div class="px-6 pt-8 pb-4 shrink-0 flex justify-between items-center">
                 <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Jugadores.</h1>
-                <button onclick="handleGameEnd()" class="px-4 py-2 bg-bento-lime text-bento-black font-bold text-xs rounded-full active:scale-95 transition-transform shadow-sm">Fin de Partida</button>
+                <button onclick="resetScores()" class="w-10 h-10 flex items-center justify-center bg-slate-200 text-slate-600 rounded-full active:scale-95 transition-transform"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
             </div>
-            
             <div class="flex-1 overflow-y-auto px-6 py-2 flex flex-col gap-4 hide-scrollbar" id="score-list"></div>
-
             <div class="p-6 shrink-0 pb-24 border-t border-slate-100 bg-white/50 backdrop-blur">
                 <form id="add-player-form" class="flex gap-3 bg-white p-2 rounded-full shadow-bento border border-slate-100">
-                    <input type="text" id="new-player-name" placeholder="Añadir jugador al grupo..." required class="flex-1 px-4 py-2 bg-transparent text-sm font-medium outline-none">
+                    <input type="text" id="new-player-name" placeholder="Añadir jugador..." required class="flex-1 px-4 py-2 bg-transparent text-sm font-medium outline-none">
                     <button type="submit" class="w-10 h-10 shrink-0 bg-bento-black text-white rounded-full flex items-center justify-center active:scale-95 transition-transform"><i data-lucide="plus" class="w-5 h-5"></i></button>
                 </form>
             </div>
         </section>
 
+        <!-- PESTAÑA 3: TURNOS -->
         <section id="tab-turns" class="tab-content flex-col h-full bg-[#f8fafc]">
             <div class="px-6 pt-8 pb-4 shrink-0"><h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Ronda.</h1></div>
             <div class="flex-1 flex flex-col items-center justify-center p-6 pb-24">
-                <div class="bg-bento-orange w-full max-w-sm rounded-[3rem] p-12 flex flex-col items-center justify-center shadow-lg relative overflow-hidden mb-8">
-                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full"></div>
-                    <span class="text-white text-sm font-bold tracking-widest uppercase mb-2 opacity-80">Ronda Actual</span>
-                    <div id="turn-display" class="text-[9rem] leading-none font-black text-white tabular-nums">1</div>
-                </div>
-                <div class="flex gap-4">
-                    <button onclick="updateTurn(-1)" class="w-20 h-20 bg-white shadow-bento rounded-full flex items-center justify-center text-bento-black active:scale-95 transition-transform"><i data-lucide="minus" class="w-8 h-8"></i></button>
-                    <button onclick="resetTurn()" class="w-20 h-20 bg-slate-200 text-slate-500 rounded-full flex items-center justify-center active:scale-95 transition-transform"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></button>
-                    <button onclick="updateTurn(1)" class="w-20 h-20 bg-bento-black shadow-bento rounded-full flex items-center justify-center text-white active:scale-95 transition-transform"><i data-lucide="plus" class="w-8 h-8"></i></button>
-                </div>
+                <div class="bg-bento-orange w-full max-w-sm rounded-[3rem] p-12 flex flex-col items-center justify-center shadow-lg relative overflow-hidden mb-8"><div class="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full"></div><span class="text-white text-sm font-bold tracking-widest uppercase mb-2 opacity-80">Ronda Actual</span><div id="turn-display" class="text-[9rem] leading-none font-black text-white tabular-nums">1</div></div>
+                <div class="flex gap-4"><button onclick="updateTurn(-1)" class="w-20 h-20 bg-white shadow-bento rounded-full flex items-center justify-center text-bento-black active:scale-95 transition-transform"><i data-lucide="minus" class="w-8 h-8"></i></button><button onclick="resetTurn()" class="w-20 h-20 bg-slate-200 text-slate-500 rounded-full flex items-center justify-center active:scale-95 transition-transform"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></button><button onclick="updateTurn(1)" class="w-20 h-20 bg-bento-black shadow-bento rounded-full flex items-center justify-center text-white active:scale-95 transition-transform"><i data-lucide="plus" class="w-8 h-8"></i></button></div>
             </div>
         </section>
 
+        <!-- PESTAÑA 4: TIEMPO -->
         <section id="tab-timer" class="tab-content flex-col h-full bg-[#f8fafc]">
             <div class="px-6 pt-8 pb-4 shrink-0"><h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Tiempo.</h1></div>
             <div class="flex-1 flex flex-col p-6 pb-24">
-                <div class="bg-white rounded-4xl p-2 flex gap-2 shadow-bento mb-6">
-                    <button onclick="setTimerMode('stopwatch')" id="btn-mode-sw" class="flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-purple text-white transition-all">Cronómetro</button>
-                    <button onclick="setTimerMode('countdown')" id="btn-mode-cd" class="flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all">Temporizador</button>
-                </div>
-                <div id="timer-bento" class="flex-1 bg-bento-purple rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500">
-                    <div id="time-display" class="text-7xl sm:text-8xl font-black tabular-nums text-white tracking-tighter">00:00</div>
-                    <div id="timer-inputs" class="hidden flex gap-4 z-10">
-                        <input type="number" id="input-min" placeholder="00" min="0" class="w-24 bg-white/20 rounded-2xl text-white text-center text-5xl py-4 font-black outline-none placeholder:text-white/30">
-                        <span class="text-5xl py-4 text-white/50 font-black">:</span>
-                        <input type="number" id="input-sec" placeholder="00" min="0" max="59" class="w-24 bg-white/20 rounded-2xl text-white text-center text-5xl py-4 font-black outline-none placeholder:text-white/30">
-                    </div>
-                </div>
-                <div class="flex gap-4 mt-6 justify-center">
-                    <button onclick="resetTimer()" class="w-20 h-20 rounded-full bg-white text-slate-400 flex items-center justify-center shadow-bento active:scale-95 transition-transform"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></button>
-                    <button onclick="toggleTimer()" id="btn-timer-toggle" class="w-32 h-20 rounded-full bg-bento-lime text-bento-black flex items-center justify-center shadow-bento active:scale-95 transition-transform"><i data-lucide="play" id="icon-timer-toggle" class="w-8 h-8 fill-bento-black"></i></button>
-                </div>
+                <div class="bg-white rounded-4xl p-2 flex gap-2 shadow-bento mb-6"><button onclick="setTimerMode('stopwatch')" id="btn-mode-sw" class="flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-purple text-white transition-all">Cronómetro</button><button onclick="setTimerMode('countdown')" id="btn-mode-cd" class="flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all">Temporizador</button></div>
+                <div id="timer-bento" class="flex-1 bg-bento-purple rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500"><div id="time-display" class="text-7xl sm:text-8xl font-black tabular-nums text-white tracking-tighter">00:00</div><div id="timer-inputs" class="hidden flex gap-4 z-10"><input type="number" id="input-min" placeholder="00" min="0" class="w-24 bg-white/20 rounded-2xl text-white text-center text-5xl py-4 font-black outline-none placeholder:text-white/30"><span class="text-5xl py-4 text-white/50 font-black">:</span><input type="number" id="input-sec" placeholder="00" min="0" max="59" class="w-24 bg-white/20 rounded-2xl text-white text-center text-5xl py-4 font-black outline-none placeholder:text-white/30"></div></div>
+                <div class="flex gap-4 mt-6 justify-center"><button onclick="resetTimer()" class="w-20 h-20 rounded-full bg-white text-slate-400 flex items-center justify-center shadow-bento active:scale-95 transition-transform"><i data-lucide="rotate-ccw" class="w-6 h-6"></i></button><button onclick="toggleTimer()" id="btn-timer-toggle" class="w-32 h-20 rounded-full bg-bento-lime text-bento-black flex items-center justify-center shadow-bento active:scale-95 transition-transform"><i data-lucide="play" id="icon-timer-toggle" class="w-8 h-8 fill-bento-black"></i></button></div>
             </div>
         </section>
     </main>
 
-    <!-- Modal Ficha de Juego -->
-    <div id="game-modal" class="fixed inset-0 z-[100] hidden flex-col justify-end">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('game-modal')"></div>
-        <div id="modal-content" class="relative bg-white w-full rounded-t-[2.5rem] p-6 max-h-[90vh] overflow-y-auto transform translate-y-full transition-transform duration-300 shadow-2xl flex flex-col gap-4 hide-scrollbar pb-10"></div>
-    </div>
-
-    <!-- Modal Fin de Partida (Elegir Ganador) -->
-    <div id="winner-modal" class="fixed inset-0 z-[110] hidden flex-col justify-center p-6">
-        <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-md" onclick="closeModal('winner-modal')"></div>
-        <div class="relative bg-white rounded-4xl p-6 shadow-2xl flex flex-col gap-4 animate-fade">
-            <h2 class="text-2xl font-black text-center mb-2">¿Quién ganó? 🏆</h2>
-            <div id="winner-list" class="flex flex-col gap-2 max-h-60 overflow-y-auto hide-scrollbar"></div>
-            <button onclick="closeModal('winner-modal')" class="mt-2 py-3 text-slate-400 font-bold">Cancelar</button>
-        </div>
-    </div>
-
-    <!-- Modal Agregar Juego -->
-    <div id="add-game-modal" class="fixed inset-0 z-[110] hidden flex-col justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-md" onclick="closeModal('add-game-modal')"></div>
-        <div class="relative bg-white rounded-4xl p-6 shadow-2xl flex flex-col gap-3 animate-fade max-h-[90vh] overflow-y-auto hide-scrollbar">
-            <h2 class="text-2xl font-black text-bento-black mb-2">Nuevo Juego</h2>
-            <input type="text" id="add-g-name" placeholder="Nombre del juego" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none">
-            <div class="flex gap-2">
-                <input type="text" id="add-g-time" placeholder="Tiempo (ej. 30m)" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none">
-                <input type="text" id="add-g-p" placeholder="Jugadores (ej. 2-4)" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none">
-            </div>
-            <div class="flex gap-2">
-                <select id="add-g-type" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none"><option value="fiesta">Fiesta</option><option value="familia">Familia</option><option value="estrategia">Estrategia</option><option value="narrativo">Narrativo</option></select>
-                <select id="add-g-diff" class="w-1/2 bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none"><option value="Baja">Baja</option><option value="Media-baja">Media-baja</option><option value="Media">Media</option><option value="Alta">Alta</option></select>
-            </div>
-            <input type="text" id="add-g-img" placeholder="Link de la imagen (JPG/PNG)" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none">
-            <button onclick="submitNewGame()" class="w-full mt-2 py-4 bg-bento-black text-white rounded-2xl font-bold shadow-md active:scale-95">Guardar Juego en la Nube</button>
-            <button onclick="closeModal('add-game-modal')" class="py-2 text-slate-400 font-bold">Cancelar</button>
-        </div>
-    </div>
-
-    <!-- Navegación Inferior -->
+    <!-- NAVEGACIÓN -->
     <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-white/90 backdrop-blur-xl border border-white/50 shadow-bento rounded-[2rem] z-50 px-2 py-2">
         <div class="flex justify-around items-center h-14">
             <button onclick="switchTab('ludoteca')" class="nav-btn active flex-1 flex flex-col items-center justify-center h-full text-slate-400 transition-all" data-target="tab-ludoteca"><div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center transition-colors"><i data-lucide="layout-grid" class="w-5 h-5"></i></div></button>
@@ -187,168 +195,175 @@
             <button onclick="switchTab('timer')" class="nav-btn flex-1 flex flex-col items-center justify-center h-full text-slate-400 transition-all" data-target="tab-timer"><div class="icon-bg w-10 h-10 rounded-full flex items-center justify-center transition-colors"><i data-lucide="clock-3" class="w-5 h-5"></i></div></button>
         </div>
     </nav>
-    <style>.nav-btn.active { color: #1e293b; } .nav-btn.active .icon-bg { background-color: #f1f5f9; } .nav-btn.active i { fill: currentColor; }</style>
 
     <script>
-        // ¡REEMPLAZA AQUÍ LA URL DE TU APPS SCRIPT!
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzyYK2rt3BO9C7YTNJFhYF-KcGGYlY3m2ZVOcn1kLhtarcKs8vKZfZvN3HKmJcuUGO8yA/exec";
+        // ¡ACTUALIZA ESTA URL!
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWlqJf_uxSP-BHmCrqDVVOao3HprvhDLnJEG1sxczEkSfmU_cGibRslL3YgBcimzEuJA/exec';
         
         let games = [];
-        let globalPlayers = []; // Lista persistente de jugadores desde la nube
-        let currentMatchScores = {}; // Puntajes de la partida actual
-
+        let globalPlayers = [];
+        
         const typeColors = { 'fiesta': 'bg-bento-orange text-white', 'familia': 'bg-bento-lime text-bento-black', 'estrategia': 'bg-bento-purple text-white', 'narrativo': 'bg-bento-black text-white' };
 
-        // ==========================================
-        // UTILIDADES Y PARSEADORES
-        // ==========================================
-        // Parsear JSON robusto (arreglos de estrellas o comentarios)
-        function parseJSONField(val, defaultVal = []) {
-            if(!val) return defaultVal;
-            if(typeof val === 'number') return [val];
-            try { return JSON.parse(val); } catch(e) { return typeof val === 'string' && val.length > 0 ? [val] : defaultVal; }
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.querySelector(`.nav-btn[data-target="tab-${tabId}"]`).classList.add('active');
+        };
+
+        // Enviar silencioso a la nube (Fire and forget)
+        function sendToCloud(payload) {
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(e=>console.log(e));
         }
 
-        // Calcular promedio de estrellas
-        function getAverageRating(ratingsArray) {
-            if(!ratingsArray || ratingsArray.length === 0) return 0;
-            const sum = ratingsArray.reduce((a, b) => a + Number(b), 0);
-            return (sum / ratingsArray.length).toFixed(1);
-        }
-
-        // Formatear Fecha
+        // Formatear Fecha Corta
         function formatDate(dateStr) {
             if(!dateStr) return "Nunca";
-            try { return new Date(dateStr).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' }); } 
-            catch(e) { return dateStr; }
+            try { return new Date(dateStr).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit' }); } catch(e) { return dateStr; }
         }
 
-        function getBoxCover(name, index) {
-            const shortName = encodeURIComponent(name.split(' ').slice(0, 2).join(' '));
-            const bgColors = ['e2e8f0', 'cbd5e1', 'f1f5f9', 'f8fafc'];
-            return `https://placehold.co/400x300/${bgColors[index % bgColors.length]}/475569?text=${shortName}&font=montserrat`;
-        }
-
-        // ==========================================
-        // COMUNICACIÓN CON LA NUBE
-        // ==========================================
-        async function loadCloudData() {
+        async function fetchGames() {
             try {
                 const res = await fetch(SCRIPT_URL);
-                if (res.ok) {
-                    const data = await res.json();
+                const data = await res.json();
+                
+                // Procesar Juegos
+                games = (data.juegos || []).map((g, i) => {
+                    const fallbackImg = `https://placehold.co/400x400/e2e8f0/475569?text=${encodeURIComponent(g.Nombre.split(' ').slice(0, 2).join(' '))}&font=montserrat`;
+                    let ratings = []; try { ratings = JSON.parse(g.Puntaje || '[]'); } catch(e){ ratings = g.Puntaje ? [parseInt(g.Puntaje)] : []; }
+                    let comments = []; try { comments = JSON.parse(g.Comentarios || '[]'); } catch(e){ comments = g.Comentarios ? [{date: new Date().toISOString(), text: g.Comentarios}] : []; }
                     
-                    // Mapeo de Juegos
-                    games = (data.juegos || []).map((g, i) => {
-                        const ratings = parseJSONField(g.Puntaje, []);
-                        const comments = parseJSONField(g.Comentarios, []);
-                        
-                        return {
-                            id: g.ID || `g_${Date.now()}_${i}`,
-                            name: g.Nombre || "Sin Nombre",
-                            time: g.Tiempo, p: g.Jugadores, diff: g.Dificultad, type: (g.Categoria || 'fiesta').toLowerCase(), mech: g.Mecanicas,
-                            image: g.Imagen || getBoxCover(g.Nombre || "Juego", i),
-                            bggUrl: g.BGG_URL || `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(g.Nombre)}`,
-                            
-                            plays: parseInt(g.Veces_Jugado) || 0,
-                            lastPlayed: g.Ultima_Partida || null,
-                            
-                            ratings: ratings, // Array de votos
-                            avgRating: getAverageRating(ratings),
-                            
-                            comments: comments, // Array de objetos {date, text}
-                            colorClass: typeColors[(g.Categoria || 'fiesta').toLowerCase()] || 'bg-slate-200 text-slate-800'
-                        };
-                    });
+                    const avg = ratings.length ? (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1) : 0;
 
-                    // Mapeo de Jugadores Históricos
-                    globalPlayers = (data.jugadores || []).map(p => ({
-                        id: p.ID, name: p.Nombre, wins: parseInt(p.Victorias) || 0
-                    }));
+                    return {
+                        id: g.ID || `g_${Date.now()}_${i}`, name: g.Nombre, time: g.Tiempo, p: g.Jugadores, diff: g.Dificultad, type: (g.Categoria || 'fiesta').toLowerCase(), mech: g.Mecanicas,
+                        image: g.Imagen || fallbackImg, fallback: fallbackImg, bggUrl: g.BGG_URL, 
+                        ratings: ratings, avgRating: avg,
+                        plays: parseInt(g.Veces_Jugado)||0, lastPlayed: g.Ultima_Partida || null,
+                        comments: comments, colorClass: typeColors[(g.Categoria || 'fiesta').toLowerCase()] || 'bg-slate-200 text-slate-800'
+                    };
+                });
 
-                    // Inicializar partida actual vacía
-                    if(Object.keys(currentMatchScores).length === 0 && globalPlayers.length > 0) {
-                        // Por defecto meter a los primeros 4 para facilidad
-                        globalPlayers.slice(0,4).forEach(p => currentMatchScores[p.id] = 0);
-                    }
-                }
-            } catch(e) { console.error("Error en nube", e); }
-            
-            document.getElementById('loading-screen').style.display = 'none';
-            renderLudoteca();
-            renderStatsPanel();
-            renderScores();
-        }
+                // Procesar Jugadores
+                globalPlayers = (data.jugadores || []).map(p => ({
+                    id: p.ID, name: p.Nombre, wins: parseInt(p.Victorias)||0, score: parseInt(p.Puntaje_Actual)||0
+                }));
 
-        function sendToCloud(payload) {
-            try { fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } 
-            catch(e) { console.error("Error saving", e); }
+                // Llenar el datalist global de búsqueda de juegos
+                document.getElementById('games-datalist').innerHTML = games.map(g => `<option value="${g.name}">`).join('');
+                
+                document.getElementById('loading-screen').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+                
+                renderLudoteca();
+                renderScores();
+            } catch (err) {
+                document.getElementById('loading-screen').innerHTML = `<p class="text-red-500 font-bold px-6 text-center">Error conectando a tu Nube.</p>`;
+            }
         }
 
         // ==========================================
-        // RENDER LUDOTECA Y ESTADÍSTICAS
+        // LUDOTECA Y TARJETAS
         // ==========================================
-        function renderStatsPanel() {
-            const top = [...games].sort((a,b) => b.plays - a.plays).slice(0, 3);
-            const maxPlays = top[0]?.plays || 1;
-            
-            document.getElementById('stats-bars').innerHTML = top.map((g, i) => {
-                const width = Math.max(10, (g.plays / maxPlays) * 100);
-                const color = i === 0 ? 'bg-bento-lime' : (i === 1 ? 'bg-bento-purple' : 'bg-slate-300');
-                const tColor = i === 0 ? 'text-bento-black' : (i === 1 ? 'text-white' : 'text-slate-600');
-                return `
-                <div class="w-full">
-                    <div class="flex justify-between text-[10px] font-bold mb-1"><span class="truncate pr-2">${g.name}</span><span>${g.plays} pt</span></div>
-                    <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
-                        <div class="${color} ${tColor} h-full text-[9px] font-bold flex items-center justify-end pr-2 rounded-full transition-all duration-1000" style="width: ${width}%"></div>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
+        const grid = document.getElementById('games-grid');
         function renderLudoteca() {
             const txt = document.getElementById('filter-search').value.toLowerCase();
-            const grid = document.getElementById('games-grid');
-            
-            const filtered = games.filter(g => (!txt || g.name.toLowerCase().includes(txt) || g.mech.toLowerCase().includes(txt)));
-            document.getElementById('stats-text').textContent = filtered.length;
+            const tV = document.getElementById('filter-time').value, pV = document.getElementById('filter-players').value, vibeV = document.getElementById('filter-vibe').value;
 
-            grid.innerHTML = filtered.map((g, i) => `
-                <div onclick="openGameModal('${g.id}')" class="bg-white rounded-4xl p-2 shadow-bento flex flex-col animate-fade border border-slate-50 cursor-pointer active:scale-95 transition-transform" style="animation-delay: ${i * 0.05}s">
-                    <div class="h-40 rounded-3xl overflow-hidden relative mb-3 bg-slate-50 p-2">
-                        <img src="${g.image}" class="w-full h-full object-contain drop-shadow-md">
-                        <span class="absolute top-3 left-3 ${g.colorClass} text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">${g.type}</span>
-                        ${g.avgRating > 0 ? `<span class="absolute top-3 right-3 bg-white/90 text-bento-black text-[10px] font-black px-2 py-1 rounded-md shadow-sm">★ ${g.avgRating}</span>` : ''}
-                    </div>
-                    <div class="px-3 pb-2 flex flex-col">
-                        <h3 class="font-extrabold text-bento-black text-[15px] leading-tight mb-1 truncate">${g.name}</h3>
-                        <p class="text-xs text-slate-400 font-medium mb-3 truncate capitalize">${g.mech}</p>
-                        <div class="flex items-center gap-3">
-                            <span class="flex items-center text-[11px] font-bold text-slate-600"><i data-lucide="users" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>${g.p}</span>
-                            <span class="flex items-center text-[11px] font-bold text-slate-600"><i data-lucide="clock" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>${g.time}</span>
+            const filtered = games.filter(g => {
+                return (!txt || g.name.toLowerCase().includes(txt) || g.mech.toLowerCase().includes(txt)) &&
+                       (pV === 'all' || g.p.includes(pV) || (parseInt(g.p.split('-')[0]) <= pV && parseInt(g.p.split('-')[1]||99) >= pV)) &&
+                       (vibeV === 'all' || g.type === vibeV);
+            });
+            document.getElementById('stats-text').textContent = filtered.length;
+            if (filtered.length === 0) {
+                grid.classList.add('hidden'); document.getElementById('empty-state').classList.remove('hidden'); document.getElementById('empty-state').classList.add('flex');
+            } else {
+                document.getElementById('empty-state').classList.add('hidden'); document.getElementById('empty-state').classList.remove('flex'); grid.classList.remove('hidden');
+                grid.innerHTML = filtered.map((g, i) => `
+                    <div onclick="openGameModal('${g.id}')" class="bg-white rounded-[2rem] p-2 shadow-bento flex flex-col animate-fade border border-slate-50 cursor-pointer active:scale-95 transition-transform" style="animation-delay: ${i * 0.03}s">
+                        <div class="h-32 bg-slate-50 rounded-3xl relative mb-2 p-2 flex items-center justify-center">
+                            <img src="${g.image}" onerror="this.src='${g.fallback}'" class="w-full h-full object-contain drop-shadow-sm">
+                            <span class="absolute top-2 right-2 ${g.colorClass} text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">${g.type}</span>
                         </div>
-                        ${g.lastPlayed ? `<div class="mt-2 text-[9px] text-slate-400 font-medium">Últ. vez: ${formatDate(g.lastPlayed)}</div>` : ''}
+                        <div class="px-2 pb-2 flex flex-col flex-1 text-center">
+                            <h3 class="font-extrabold text-bento-black text-[13px] leading-tight mb-1 line-clamp-2">${g.name}</h3>
+                            <div class="flex items-center justify-center gap-2 mt-auto text-[10px] font-bold text-slate-400">
+                                <span class="flex items-center"><i data-lucide="users" class="w-3 h-3 mr-1"></i>${g.p}</span>
+                                ${g.avgRating > 0 ? `<span class="flex items-center text-yellow-500"><i data-lucide="star" class="w-3 h-3 mr-1 fill-yellow-500"></i>${g.avgRating}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>`).join('');
+                lucide.createIcons();
+            }
+        }
+        ['filter-search', 'filter-time', 'filter-players', 'filter-vibe'].forEach(id => {
+            document.getElementById(id).addEventListener('input', renderLudoteca); document.getElementById(id).addEventListener('change', renderLudoteca);
+        });
+
+        // ==========================================
+        // MODALES (Manejo unificado)
+        // ==========================================
+        window.openModal = (modalId) => {
+            if(modalId === 'stats-modal') renderStats();
+            document.getElementById(`${modalId.split('-')[0]}-backdrop`).classList.remove('hidden');
+            document.getElementById(modalId).classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById(`${modalId.split('-')[0]}-backdrop`).classList.remove('opacity-0');
+                document.getElementById(modalId).classList.remove('translate-y-full');
+            }, 10);
+        };
+        window.closeModal = (modalId) => {
+            document.getElementById(`${modalId.split('-')[0]}-backdrop`).classList.add('opacity-0');
+            document.getElementById(modalId).classList.add('translate-y-full');
+            setTimeout(() => {
+                document.getElementById(`${modalId.split('-')[0]}-backdrop`).classList.add('hidden');
+                document.getElementById(modalId).classList.add('hidden');
+            }, 300);
+        };
+
+        // ==========================================
+        // ESTADÍSTICAS
+        // ==========================================
+        function renderStats() {
+            const topGames = [...games].sort((a,b) => b.plays - a.plays).slice(0,3);
+            document.getElementById('stats-top-games').innerHTML = topGames.map(g => `
+                <div class="bg-slate-50 p-3 rounded-2xl flex justify-between items-center border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <img src="${g.image}" class="w-10 h-10 object-cover rounded-lg shadow-sm">
+                        <div class="flex flex-col"><span class="font-bold text-sm text-bento-black">${g.name}</span><span class="text-[10px] text-slate-400">Últ: ${formatDate(g.lastPlayed)}</span></div>
                     </div>
+                    <span class="bg-bento-purple text-white font-black text-sm px-3 py-1 rounded-full">${g.plays} pt</span>
+                </div>
+            `).join('');
+
+            const topPlayers = [...globalPlayers].sort((a,b) => b.wins - a.wins).filter(p => p.wins > 0);
+            document.getElementById('stats-top-players').innerHTML = topPlayers.length === 0 ? '<p class="text-sm text-slate-400">Aún no hay victorias registradas.</p>' : topPlayers.map((p, i) => `
+                <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-50">
+                    <span class="font-bold text-sm flex items-center gap-2">${i===0?'<i data-lucide="crown" class="w-4 h-4 text-yellow-500 fill-yellow-500"></i>':''} ${p.name}</span>
+                    <span class="font-black text-bento-lime bg-slate-900 px-3 py-1 rounded-full text-xs">${p.wins} Wins</span>
                 </div>
             `).join('');
             lucide.createIcons();
         }
-        document.getElementById('filter-search').addEventListener('input', renderLudoteca);
 
         // ==========================================
-        // MODAL FICHA DE JUEGO & INTERACCIONES
+        // FICHA DEL JUEGO (Comentarios y Puntuación real)
         // ==========================================
         window.openGameModal = (id) => {
             const g = games.find(x => x.id === id);
-            if(!g) return;
-
-            const forumHtml = g.comments.length === 0 ? '<p class="text-xs text-slate-400 text-center py-4">Sé el primero en comentar.</p>' : 
+            
+            // Reconstruir foro
+            const forumHtml = g.comments.length === 0 ? '<p class="text-xs text-slate-400 text-center py-2">Sin comentarios aún.</p>' : 
                 g.comments.map(c => `
-                    <div class="bg-slate-100 rounded-xl p-3 mb-2 relative">
+                    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-50 relative mb-2">
                         <span class="text-[9px] text-slate-400 absolute top-2 right-3 font-bold">${formatDate(c.date)}</span>
                         <p class="text-sm font-medium text-slate-700 mt-2">${c.text}</p>
                     </div>
                 `).reverse().join('');
+
+            const playerOptions = globalPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 
             document.getElementById('modal-content').innerHTML = `
                 <div class="flex justify-between items-start mb-2">
@@ -357,227 +372,230 @@
                 </div>
                 
                 <div class="grid grid-cols-3 gap-2 mb-2">
-                    <div class="bg-slate-50 rounded-2xl p-3 flex flex-col items-center text-center"><i data-lucide="users" class="w-4 h-4 text-slate-400 mb-1"></i><span class="text-xs font-bold">${g.p}</span></div>
-                    <div class="bg-slate-50 rounded-2xl p-3 flex flex-col items-center text-center"><i data-lucide="clock" class="w-4 h-4 text-slate-400 mb-1"></i><span class="text-xs font-bold">${g.time}</span></div>
-                    <div class="bg-slate-50 rounded-2xl p-3 flex flex-col items-center text-center"><i data-lucide="bar-chart-2" class="w-4 h-4 text-slate-400 mb-1"></i><span class="text-xs font-bold truncate w-full">${g.diff}</span></div>
+                    <div class="bg-slate-50 rounded-2xl p-2 flex flex-col items-center justify-center text-center"><i data-lucide="users" class="w-4 h-4 text-slate-400 mb-1"></i><span class="text-xs font-extrabold">${g.p}</span></div>
+                    <div class="bg-slate-50 rounded-2xl p-2 flex flex-col items-center justify-center text-center"><i data-lucide="clock" class="w-4 h-4 text-slate-400 mb-1"></i><span class="text-xs font-extrabold">${g.time}</span></div>
+                    <div class="bg-slate-50 rounded-2xl p-2 flex flex-col items-center justify-center text-center"><i data-lucide="bar-chart-2" class="w-4 h-4 text-slate-400 mb-1"></i><span class="text-[10px] font-extrabold truncate w-full">${g.diff}</span></div>
                 </div>
 
-                <button id="btn-play-${g.id}" onclick="logPlayInModal('${g.id}')" class="w-full py-4 bg-bento-black text-white rounded-2xl font-bold flex justify-between items-center px-6 transition-colors shadow-bento active:scale-95">
-                    <span class="flex items-center gap-2"><i data-lucide="play-circle" class="w-5 h-5"></i> Jugar de nuevo</span>
-                    <span class="bg-white/20 px-3 py-1 rounded-full text-[10px]" id="play-count-${g.id}">${g.plays} jugadas</span>
-                </button>
+                <!-- Bloque de Registro de Victoria desde el Juego -->
+                <div class="bg-bento-black rounded-3xl p-4 shadow-bento flex flex-col gap-3">
+                    <div class="flex justify-between items-center text-white">
+                        <span class="font-extrabold text-sm flex items-center gap-2"><i data-lucide="play-circle" class="w-5 h-5"></i> Registrar Partida</span>
+                        <span class="bg-white/20 px-2 py-0.5 rounded-full text-[10px]" id="play-count-${g.id}">${g.plays} jugadas</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="winner-select-${g.id}" class="flex-1 bg-white/10 text-white rounded-xl px-3 outline-none text-sm border border-white/20 focus:border-white">
+                            <option value="" disabled selected>¿Quién ganó?</option>
+                            <option value="none">Empate / Nadie (Solo sumar partida)</option>
+                            ${playerOptions}
+                        </select>
+                        <button onclick="logPlayAndWin('${g.id}')" id="btn-play-${g.id}" class="bg-bento-lime text-bento-black px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all">Guardar</button>
+                    </div>
+                </div>
 
-                <div class="bg-slate-50 rounded-2xl p-4 flex justify-between items-center">
+                <div class="bg-slate-50 rounded-2xl p-4 flex justify-between items-center mt-2 border border-slate-100">
                     <div class="flex flex-col">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Comunidad</span>
-                        <span class="text-lg font-black">${g.avgRating > 0 ? `★ ${g.avgRating}` : 'Sin votos'} <span class="text-xs font-medium text-slate-400">(${g.ratings.length})</span></span>
+                        <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Comunidad</span>
+                        <span class="text-sm font-black">${g.avgRating > 0 ? `★ ${g.avgRating}` : 'Sin votos'} <span class="text-[10px] font-medium text-slate-400">(${g.ratings.length})</span></span>
                     </div>
                     <div class="flex gap-1" id="modal-stars-${g.id}">
-                        ${[1,2,3,4,5].map(i => `<i data-lucide="star" onclick="rateGame('${g.id}', ${i})" class="w-6 h-6 cursor-pointer transition-colors text-slate-200 fill-white active:scale-75"></i>`).join('')}
+                        ${[1,2,3,4,5].map(i => `<i data-lucide="star" onclick="rateGameInModal('${g.id}', ${i})" class="w-6 h-6 cursor-pointer transition-colors text-slate-200 fill-white active:scale-75"></i>`).join('')}
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-2 mt-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider ml-2">Foro / Impresiones</span>
-                    <div class="max-h-40 overflow-y-auto hide-scrollbar border-b border-slate-100 pb-2" id="forum-${g.id}">
-                        ${forumHtml}
-                    </div>
-                    <div class="relative mt-2">
-                        <input type="text" id="comment-input-${g.id}" placeholder="Agrega un comentario..." class="w-full bg-slate-50 border border-slate-100 rounded-full py-3 pl-4 pr-24 text-sm outline-none focus:ring-2 focus:ring-bento-purple">
-                        <button onclick="addComment('${g.id}')" class="absolute right-1 top-1 bg-bento-purple text-white px-4 py-2 rounded-full text-xs font-bold shadow-sm active:scale-95">Publicar</button>
+                    <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider ml-2">Foro del Juego</span>
+                    <div class="bg-slate-50 rounded-3xl p-3 border border-slate-100">
+                        <div class="max-h-40 overflow-y-auto hide-scrollbar flex flex-col gap-1 mb-2" id="forum-${g.id}">
+                            ${forumHtml}
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="input-comment-${g.id}" placeholder="Añadir comentario..." class="w-full bg-white border border-slate-200 rounded-full py-2 pl-4 pr-20 text-xs font-medium outline-none focus:border-bento-purple">
+                            <button onclick="addComment('${g.id}')" class="absolute right-1 top-1 bg-bento-purple text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-sm active:scale-95">Enviar</button>
+                        </div>
                     </div>
                 </div>
-
-                <a href="${g.bggUrl}" target="_blank" class="mt-2 w-full py-3 border-2 border-bento-orange text-bento-orange rounded-2xl font-bold flex justify-center items-center gap-2">Ver en BGG <i data-lucide="external-link" class="w-4 h-4"></i></a>
             `;
             lucide.createIcons();
-            
-            const m = document.getElementById('game-modal');
-            m.classList.remove('hidden'); m.classList.add('flex');
-            setTimeout(() => { m.children[0].classList.remove('opacity-0'); m.children[1].classList.remove('translate-y-full'); }, 10);
+            openModal('game-modal');
         };
 
-        window.closeModal = (id) => {
-            const m = document.getElementById(id);
-            m.children[0].classList.add('opacity-0');
-            m.children[1].classList.add('translate-y-full');
-            setTimeout(() => { m.classList.add('hidden'); m.classList.remove('flex'); }, 300);
-        };
+        window.logPlayAndWin = (gameId) => {
+            const select = document.getElementById(`winner-select-${gameId}`);
+            const winnerId = select.value;
+            if(!winnerId) return alert("Selecciona quién ganó o 'Nadie'.");
 
-        window.logPlayInModal = (id) => {
-            const g = games.find(x => x.id === id);
+            const g = games.find(x => x.id === gameId);
             g.plays += 1;
             g.lastPlayed = new Date().toISOString();
-            document.getElementById(`play-count-${id}`).innerText = `${g.plays} jugadas`;
-            
-            const btn = document.getElementById(`btn-play-${id}`);
-            btn.classList.replace('bg-bento-black', 'bg-bento-lime'); btn.classList.replace('text-white', 'text-bento-black');
-            setTimeout(() => { btn.classList.replace('bg-bento-lime', 'bg-bento-black'); btn.classList.replace('text-bento-black', 'text-white'); }, 1000);
+            document.getElementById(`play-count-${gameId}`).innerText = `${g.plays} jugadas`;
 
-            sendToCloud({ action: 'update_game', id: id, field: 'Veces_Jugado', value: g.plays });
-            sendToCloud({ action: 'update_game', id: id, field: 'Ultima_Partida', value: g.lastPlayed });
-            renderLudoteca(); renderStatsPanel();
+            // Efecto Visual
+            const btn = document.getElementById(`btn-play-${gameId}`);
+            btn.textContent = "¡Guardado!"; btn.classList.replace('bg-bento-lime', 'bg-white');
+            setTimeout(() => { btn.textContent = "Guardar"; btn.classList.replace('bg-white', 'bg-bento-lime'); select.value = ""; }, 1500);
+
+            if(winnerId !== 'none') {
+                const p = globalPlayers.find(x => x.id === winnerId);
+                if(p) p.wins += 1;
+                sendToCloud({ action: 'win_player', playerId: winnerId, gameId: gameId });
+            } else {
+                // Solo suma partida
+                sendToCloud({ action: 'update', id: gameId, field: 'Veces_Jugado', value: g.plays });
+                sendToCloud({ action: 'update', id: gameId, field: 'Ultima_Partida', value: g.lastPlayed });
+            }
+            renderLudoteca();
         };
 
-        window.rateGame = (id, rating) => {
+        window.rateGameInModal = (id, rating) => {
             const g = games.find(x => x.id === id);
-            g.ratings.push(rating); // Promediar
-            g.avgRating = getAverageRating(g.ratings);
+            g.ratings.push(rating);
+            g.avgRating = (g.ratings.reduce((a,b)=>a+b,0) / g.ratings.length).toFixed(1);
             
-            // Efecto visual rápido (Llenar estrellas clickeadas temporalmente)
-            const stars = document.getElementById(`modal-stars-${id}`).children;
-            for(let i=0; i<5; i++) { stars[i].className = `w-6 h-6 cursor-pointer transition-colors ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200 fill-white'}`; }
+            // Relleno temporal para UX
+            document.getElementById(`modal-stars-${id}`).innerHTML = [1,2,3,4,5].map(i => `<i data-lucide="star" class="w-6 h-6 ${i<=rating?'text-yellow-400 fill-yellow-400':'text-slate-200 fill-white'}"></i>`).join('');
+            lucide.createIcons();
             
-            sendToCloud({ action: 'update_game', id: id, field: 'Puntaje', value: JSON.stringify(g.ratings) });
-            setTimeout(() => openGameModal(id), 500); // Recargar modal
+            sendToCloud({ action: 'update', id: id, field: 'Puntaje', value: JSON.stringify(g.ratings) });
+            setTimeout(() => openGameModal(id), 600); // Recargar
         };
 
         window.addComment = (id) => {
-            const input = document.getElementById(`comment-input-${id}`);
+            const input = document.getElementById(`input-comment-${id}`);
             const text = input.value.trim();
             if(!text) return;
             const g = games.find(x => x.id === id);
             g.comments.push({ date: new Date().toISOString(), text: text });
             
-            sendToCloud({ action: 'update_game', id: id, field: 'Comentarios', value: JSON.stringify(g.comments) });
-            openGameModal(id); // Recargar modal
+            sendToCloud({ action: 'update', id: id, field: 'Comentarios', value: JSON.stringify(g.comments) });
+            openGameModal(id); // Recargar
         };
 
         // ==========================================
-        // JUGADORES, PUNTAJES Y VICTORIAS
+        // JUGADORES Y PUNTAJES (Vinculado a Nube)
         // ==========================================
+        const scoreList = document.getElementById('score-list');
+        const addPlayerForm = document.getElementById('add-player-form');
+        const cardColors = ['bg-bento-purple text-white', 'bg-bento-orange text-white', 'bg-bento-lime text-bento-black', 'bg-bento-black text-white'];
+
         function renderScores() {
-            const list = document.getElementById('score-list');
-            if (Object.keys(currentMatchScores).length === 0) {
-                list.innerHTML = `<div class="flex flex-col items-center justify-center h-full bg-white rounded-4xl shadow-bento p-8 text-slate-400 text-center"><i data-lucide="user-plus" class="w-12 h-12 mb-4 opacity-50"></i><p class="text-sm font-medium">Añade a tu grupo desde abajo.</p></div>`;
+            if (globalPlayers.length === 0) {
+                scoreList.innerHTML = `<div class="flex flex-col items-center justify-center h-full bg-white rounded-4xl border border-slate-100 shadow-sm p-8 text-slate-400"><p class="text-sm font-medium">Añade a tus amigos abajo</p></div>`;
             } else {
-                const colors = ['bg-bento-purple text-white', 'bg-bento-orange text-white', 'bg-bento-lime text-bento-black', 'bg-bento-black text-white'];
-                const sortedIds = Object.keys(currentMatchScores).sort((a,b) => currentMatchScores[b] - currentMatchScores[a]);
-                
-                list.innerHTML = sortedIds.map((pId, index) => {
-                    const playerObj = globalPlayers.find(x => x.id === pId);
-                    if(!playerObj) return '';
-                    const score = currentMatchScores[pId];
-                    const cCombo = colors[index % colors.length];
-                    const btnBg = cCombo.includes('black') ? 'bg-white/50 text-black' : 'bg-white/20 text-white';
+                const sorted = [...globalPlayers].sort((a,b) => b.score - a.score);
+                scoreList.innerHTML = sorted.map((p, index) => {
+                    const colorCombo = cardColors[index % cardColors.length];
+                    const isDarkText = colorCombo.includes('text-bento-black');
+                    const btnBg = isDarkText ? 'bg-white/50 hover:bg-white text-bento-black' : 'bg-white/20 hover:bg-white/30 text-white';
                     
                     return `
-                    <div class="${cCombo} rounded-[2rem] p-5 flex flex-col gap-4 shadow-sm relative animate-fade">
-                        ${index === 0 && score > 0 ? `<div class="absolute -right-4 -top-4 w-16 h-16 bg-white/20 rounded-full flex items-end justify-start p-3"><i data-lucide="crown" class="w-5 h-5 ${cCombo.includes('black') ? 'text-black' : 'text-white'} fill-current"></i></div>` : ''}
+                    <div class="${colorCombo} rounded-[2rem] p-5 flex flex-col gap-4 shadow-sm relative overflow-hidden">
+                        ${index === 0 && p.score > 0 ? `<div class="absolute -right-4 -top-4 w-16 h-16 bg-white/20 rounded-full flex items-end justify-start p-3"><i data-lucide="crown" class="w-5 h-5 ${isDarkText ? 'text-black' : 'text-white'} fill-current"></i></div>` : ''}
+                        
                         <div class="flex justify-between items-center z-10">
-                            <div><span class="font-bold text-lg block">${playerObj.name}</span><span class="text-[9px] uppercase tracking-wider opacity-70">Victorias Globales: ${playerObj.wins}</span></div>
-                            <span class="text-4xl font-black">${score}</span>
+                            <div><span class="font-bold text-lg block">${p.name}</span><span class="text-[9px] uppercase tracking-wider opacity-70">Victorias Totales: ${p.wins}</span></div>
+                            <span class="text-4xl font-black tabular-nums">${p.score}</span>
                         </div>
                         <div class="flex gap-2 justify-between z-10">
-                            <button onclick="updateScore('${pId}', -1)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold">-1</button>
-                            <button onclick="updateScore('${pId}', 1)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold">+1</button>
-                            <button onclick="updateScore('${pId}', 5)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold">+5</button>
-                            <button onclick="removeFromMatch('${pId}')" class="w-10 flex items-center justify-center rounded-2xl ${btnBg}"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+                            <button onclick="updateScore('${p.id}', -1)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold text-sm">-1</button>
+                            <button onclick="updateScore('${p.id}', 1)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold text-sm">+1</button>
+                            <button onclick="updateScore('${p.id}', 5)" class="flex-1 ${btnBg} py-2 rounded-2xl font-bold text-sm">+5</button>
+                            <button onclick="openWinModal('${p.id}')" class="flex-1 bg-yellow-400 text-yellow-900 py-2 rounded-2xl font-black text-[10px] uppercase flex items-center justify-center gap-1 shadow-md"><i data-lucide="trophy" class="w-3 h-3"></i> Ganó</button>
                         </div>
-                    </div>`
-                }).join('');
+                    </div>`}).join('');
             }
             lucide.createIcons();
         }
 
-        document.getElementById('add-player-form').addEventListener('submit', (e) => {
+        addPlayerForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const input = document.getElementById('new-player-name');
-            const name = input.value.trim();
+            const name = document.getElementById('new-player-name').value.trim();
             if(name) {
-                // Check if exists in global
-                let p = globalPlayers.find(x => x.name.toLowerCase() === name.toLowerCase());
-                if(!p) {
-                    p = { id: 'p_' + Date.now(), name: name, wins: 0 };
-                    globalPlayers.push(p);
-                    sendToCloud({ action: 'add_player', player: {id: p.id, name: p.name} });
-                }
-                currentMatchScores[p.id] = 0; // Add to current match
-                input.value = ''; renderScores();
+                const newP = { id: 'p_' + Date.now(), name, wins: 0, score: 0 };
+                globalPlayers.push(newP);
+                document.getElementById('new-player-name').value = '';
+                renderScores();
+                scoreList.scrollTo({ top: scoreList.scrollHeight, behavior: 'smooth' });
+                sendToCloud({ action: 'add_player', player: {id: newP.id, name: newP.name} });
             }
         });
 
-        window.updateScore = (id, change) => { currentMatchScores[id] += change; renderScores(); };
-        window.removeFromMatch = (id) => { delete currentMatchScores[id]; renderScores(); };
-
-        window.handleGameEnd = () => {
-            const activeIds = Object.keys(currentMatchScores);
-            if(activeIds.length === 0) return;
-            const sortedIds = activeIds.sort((a,b) => currentMatchScores[b] - currentMatchScores[a]);
-            
-            const wList = document.getElementById('winner-list');
-            wList.innerHTML = sortedIds.map(id => {
-                const p = globalPlayers.find(x => x.id === id);
-                return `<button onclick="awardWin('${id}')" class="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-left flex justify-between items-center active:bg-bento-lime"><span>${p.name}</span><span class="text-bento-purple">${currentMatchScores[id]} pts</span></button>`;
-            }).join('');
-            
-            const m = document.getElementById('winner-modal');
-            m.classList.remove('hidden'); m.classList.add('flex');
-            setTimeout(() => m.children[0].classList.remove('opacity-0'), 10);
-        };
-
-        window.awardWin = (winnerId) => {
-            const p = globalPlayers.find(x => x.id === winnerId);
-            if(p) {
-                p.wins += 1;
-                sendToCloud({ action: 'win_player', id: winnerId });
+        window.updateScore = (id, change) => {
+            const p = globalPlayers.find(x => x.id === id);
+            if(p) { 
+                p.score += change; renderScores(); 
+                sendToCloud({ action: 'update_player_score', id: id, score: p.score });
             }
-            // Reset scores
-            Object.keys(currentMatchScores).forEach(id => currentMatchScores[id] = 0);
-            closeModal('winner-modal');
-            renderScores();
-            alert(`¡Victoria anotada para ${p.name}!`);
+        };
+
+        window.resetScores = () => {
+            if(confirm('¿Reiniciar a 0?')) { 
+                globalPlayers.forEach(p => { p.score = 0; sendToCloud({ action: 'update_player_score', id: p.id, score: 0 }); }); 
+                renderScores(); 
+            }
         };
 
         // ==========================================
-        // AÑADIR JUEGOS
+        // REGISTRO DE VICTORIA (Desde Jugador)
         // ==========================================
-        window.openAddGameModal = () => {
-            const m = document.getElementById('add-game-modal');
-            m.classList.remove('hidden'); m.classList.add('flex');
-            setTimeout(() => m.children[0].classList.remove('opacity-0'), 10);
+        let pendingWinPlayerId = null;
+        window.openWinModal = (playerId) => {
+            pendingWinPlayerId = playerId;
+            const p = globalPlayers.find(x => x.id === playerId);
+            document.getElementById('win-modal-player-name').innerHTML = `Selecciona qué juego ganó <b>${p.name}</b>:`;
+            document.getElementById('win-game-search').value = '';
+            openModal('win-modal');
         };
 
+        document.getElementById('btn-confirm-win').addEventListener('click', () => {
+            const gameName = document.getElementById('win-game-search').value;
+            const g = games.find(x => x.name === gameName);
+            if(!g) return alert("Escribe y selecciona un juego de la lista.");
+            
+            const p = globalPlayers.find(x => x.id === pendingWinPlayerId);
+            if(p) p.wins += 1;
+            g.plays += 1;
+            g.lastPlayed = new Date().toISOString();
+            
+            sendToCloud({ action: 'win_player', playerId: p.id, gameId: g.id });
+            
+            closeModal('win-modal');
+            renderScores(); renderLudoteca();
+            alert(`¡Victoria guardada para ${p.name} en ${g.name}!`);
+        });
+
+        // ==========================================
+        // AGREGAR JUEGOS
+        // ==========================================
         window.submitNewGame = () => {
             const name = document.getElementById('add-g-name').value;
             if(!name) return alert("El nombre es obligatorio");
             
             const newG = {
-                ID: 'g_' + Date.now(), Nombre: name,
-                Tiempo: document.getElementById('add-g-time').value,
-                Jugadores: document.getElementById('add-g-p').value,
-                Categoria: document.getElementById('add-g-type').value,
-                Dificultad: document.getElementById('add-g-diff').value,
-                Imagen: document.getElementById('add-g-img').value,
-                Mecanicas: "", Min_T: "", Max_T: "", Min_P: "", Max_P: "",
+                ID: 'g_' + Date.now(), Nombre: name, Tiempo: document.getElementById('add-g-time').value,
+                Jugadores: document.getElementById('add-g-p').value, Categoria: document.getElementById('add-g-type').value,
+                Dificultad: document.getElementById('add-g-diff').value, Imagen: document.getElementById('add-g-img').value,
                 BGG_URL: `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(name)}`,
                 Puntaje: "[]", Veces_Jugado: 0, Comentarios: "[]", Ultima_Partida: ""
             };
 
-            // Enviar a la nube
             sendToCloud({ action: 'add_game', game: newG });
-            
-            // Añadir local y repintar para feedback instantáneo
-            newG.id = newG.ID; newG.name = newG.Nombre; newG.time = newG.Tiempo; newG.p = newG.Jugadores; newG.diff = newG.Dificultad;
-            newG.type = newG.Categoria.toLowerCase(); newG.mech = newG.Mecanicas; newG.image = newG.Imagen || getBoxCover(name, 1);
-            newG.bggUrl = newG.BGG_URL; newG.plays = 0; newG.ratings = []; newG.avgRating = 0; newG.comments = []; newG.colorClass = typeColors[newG.type];
-            games.push(newG);
-            
+            alert("Juego enviado a la nube. Recarga en unos segundos para verlo.");
             closeModal('add-game-modal');
-            renderLudoteca();
-            alert("Juego enviado a la Nube.");
         };
 
-        // Pestañas UI y Utils menores
-        window.switchTab = (tabName) => { document.querySelectorAll('.nav-btn').forEach(b => b.dataset.target === `tab-${tabName}` ? b.classList.add('active') : b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active')); document.getElementById(`tab-${tabName}`).classList.add('active'); };
-        let cTurn = 1; window.updateTurn = (v) => { cTurn=Math.max(1,cTurn+v); document.getElementById('turn-display').textContent=cTurn; }; window.resetTurn = () => { cTurn=1; document.getElementById('turn-display').textContent=cTurn; };
+        // ==========================================
+        // TURNOS Y TIEMPO (Mini-funciones)
+        // ==========================================
+        let cTurn = 1; window.updateTurn = (v) => { cTurn = Math.max(1, cTurn + v); document.getElementById('turn-display').textContent = cTurn; }; window.resetTurn = () => { cTurn = 1; document.getElementById('turn-display').textContent = cTurn; };
         
         let tMode = 'stopwatch', tInterval = null, tSecs = 0, isTRun = false;
-        window.setTimerMode = (m) => { if(isTRun) window.toggleTimer(); tMode=m; tSecs=0; document.getElementById('time-display').textContent="00:00"; document.getElementById('btn-mode-sw').className=m==='stopwatch'?"flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-purple text-white transition-all":"flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all"; document.getElementById('btn-mode-cd').className=m==='countdown'?"flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-black text-white transition-all":"flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all"; document.getElementById('timer-bento').className=`flex-1 ${m==='stopwatch'?'bg-bento-purple':'bg-bento-black'} rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500`; document.getElementById('timer-inputs').classList.toggle('hidden',m==='stopwatch'); document.getElementById('time-display').classList.toggle('hidden',m!=='stopwatch'); };
-        window.toggleTimer = () => { if(isTRun){ clearInterval(tInterval); document.getElementById('icon-timer-toggle').setAttribute('data-lucide','play'); }else{ if(tMode==='countdown'&&tSecs===0){ tSecs=(parseInt(document.getElementById('input-min').value)||0)*60+(parseInt(document.getElementById('input-sec').value)||0); if(tSecs===0)return; document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('time-display').classList.remove('hidden'); } tInterval=setInterval(()=>{ tMode==='stopwatch'?tSecs++:tSecs--; if(tSecs<=0){ clearInterval(tInterval); isTRun=false; document.getElementById('icon-timer-toggle').setAttribute('data-lucide','play'); document.getElementById('timer-bento').classList.add('bg-bento-orange'); setTimeout(()=>document.getElementById('timer-bento').classList.remove('bg-bento-orange'),1500); } document.getElementById('time-display').textContent=`${Math.floor(tSecs/60).toString().padStart(2,'0')}:${(tSecs%60).toString().padStart(2,'0')}`; },1000); document.getElementById('icon-timer-toggle').setAttribute('data-lucide','pause'); } isTRun=!isTRun; lucide.createIcons(); };
-        window.resetTimer = () => { clearInterval(tInterval); isTRun=false; tSecs=0; document.getElementById('time-display').textContent="00:00"; document.getElementById('icon-timer-toggle').setAttribute('data-lucide','play'); if(tMode==='countdown'){ document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('time-display').classList.add('hidden'); } lucide.createIcons(); };
+        window.setTimerMode = (m) => { if(isTRun) window.toggleTimer(); tMode = m; tSecs = 0; document.getElementById('time-display').textContent = "00:00"; document.getElementById('btn-mode-sw').className = m === 'stopwatch' ? "flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-purple text-white transition-all" : "flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all"; document.getElementById('btn-mode-cd').className = m === 'countdown' ? "flex-1 py-4 rounded-3xl text-sm font-bold bg-bento-black text-white transition-all" : "flex-1 py-4 rounded-3xl text-sm font-bold text-slate-400 bg-transparent transition-all"; document.getElementById('timer-bento').className = `flex-1 ${m === 'stopwatch' ? 'bg-bento-purple' : 'bg-bento-black'} rounded-[3rem] p-8 flex flex-col items-center justify-center shadow-lg relative overflow-hidden transition-colors duration-500`; document.getElementById('timer-inputs').classList.toggle('hidden', m === 'stopwatch'); document.getElementById('time-display').classList.toggle('hidden', m !== 'stopwatch'); };
+        window.toggleTimer = () => { if(isTRun) { clearInterval(tInterval); document.getElementById('icon-timer-toggle').setAttribute('data-lucide', 'play'); } else { if(tMode === 'countdown' && tSecs === 0) { tSecs = (parseInt(document.getElementById('input-min').value)||0)*60 + (parseInt(document.getElementById('input-sec').value)||0); if(tSecs === 0) return; document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('time-display').classList.remove('hidden'); } tInterval = setInterval(() => { tMode === 'stopwatch' ? tSecs++ : tSecs--; if(tSecs <= 0) { clearInterval(tInterval); isTRun = false; document.getElementById('icon-timer-toggle').setAttribute('data-lucide', 'play'); document.getElementById('timer-bento').classList.add('bg-bento-orange'); setTimeout(() => document.getElementById('timer-bento').classList.remove('bg-bento-orange'), 1500); } document.getElementById('time-display').textContent = `${Math.floor(tSecs/60).toString().padStart(2, '0')}:${(tSecs%60).toString().padStart(2, '0')}`; }, 1000); document.getElementById('icon-timer-toggle').setAttribute('data-lucide', 'pause'); } isTRun = !isTRun; lucide.createIcons(); };
+        window.resetTimer = () => { clearInterval(tInterval); isTRun = false; tSecs = 0; document.getElementById('time-display').textContent = "00:00"; document.getElementById('icon-timer-toggle').setAttribute('data-lucide', 'play'); if(tMode === 'countdown') { document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('time-display').classList.add('hidden'); } lucide.createIcons(); };
 
-        window.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); loadCloudData(); });
+        // INICIO
+        document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); fetchGames(); });
     </script>
 </body>
 </html>
