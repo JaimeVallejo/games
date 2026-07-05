@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ludoteca | Data Persistente</title>
+    <title>LudosApp</title>
     <!-- SVG Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239d4edd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='2' width='20' height='20' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><circle cx='15.5' cy='15.5' r='1.5'/></svg>">
     
@@ -78,7 +78,7 @@
                 <div id="stats-top-games" class="flex flex-col gap-3"></div>
             </div>
             <div>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i data-lucide="crown" class="w-4 h-4 inline mr-1"></i> Salón de la Fama (Jugadores)</h3>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i data-lucide="crown" class="w-4 h-4 inline mr-1"></i> Salón de la Fama</h3>
                 <div id="stats-top-players" class="flex flex-col gap-2"></div>
             </div>
         </div>
@@ -87,7 +87,7 @@
     <div id="win-backdrop" class="fixed inset-0 bg-bento-black/40 backdrop-blur-sm z-[80] hidden opacity-0 transition-opacity duration-300" onclick="closeModal('win-modal')"></div>
     <div id="win-modal" class="fixed bottom-0 left-0 w-full bg-white rounded-t-[2.5rem] z-[90] transform translate-y-full transition-transform duration-300 shadow-modal flex flex-col hidden p-6 pb-safe">
         <h2 class="text-2xl font-black text-bento-black mb-4">Anotar Victoria 🏆</h2>
-        <p class="text-sm text-slate-500 mb-4" id="win-modal-player-name">Selecciona qué juego ganó:</p>
+        <p class="text-sm text-slate-500 mb-4" id="win-modal-player-name">¿Qué juego ganó?:</p>
         <input type="text" id="win-game-search" list="games-datalist" placeholder="Escribe para buscar el juego..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-bento-purple mb-4">
         <button id="btn-confirm-win" class="w-full py-4 bg-bento-lime text-bento-black rounded-2xl font-bold shadow-sm active:scale-95 transition-transform mb-2">Confirmar Victoria</button>
         <button onclick="closeModal('win-modal')" class="py-2 text-slate-400 font-bold">Cancelar</button>
@@ -114,7 +114,7 @@
         <section id="tab-ludoteca" class="tab-content active flex-col h-full">
             <div class="bg-[#f8fafc] z-10 shrink-0 pt-8 pb-4 px-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">Ludoteca.</h1>
+                    <h1 class="text-4xl font-extrabold text-bento-black tracking-tight">LudosApp</h1>
                     <div class="flex gap-2">
                         <button onclick="openModal('stats-modal')" class="w-10 h-10 bg-slate-200 text-bento-black rounded-full flex items-center justify-center shadow-sm active:scale-95"><i data-lucide="bar-chart-2"></i></button>
                         <button onclick="openModal('add-game-modal')" class="w-10 h-10 bg-bento-black text-white rounded-full flex items-center justify-center shadow-md active:scale-95"><i data-lucide="plus"></i></button>
@@ -341,15 +341,18 @@
                         <span class="font-extrabold text-sm flex items-center gap-2"><i data-lucide="play-circle" class="w-5 h-5"></i> Registrar Partida</span>
                         <span class="bg-white/20 px-2 py-0.5 rounded-full text-[10px]" id="play-count-${g.id}">${g.plays} jugadas</span>
                     </div>
-                    <div class="flex gap-2">
-                        <select id="winner-select-${g.id}" class="flex-1 bg-white/10 text-white rounded-xl px-3 outline-none text-sm border border-white/20 focus:border-white">
-                            <option value="" disabled selected>¿Quién ganó?</option>
-                            <option value="none">Empate / Nadie (Solo sumar partida)</option>
-                            ${playerOptions}
-                        </select>
-                        <button onclick="logPlayAndWin('${g.id}')" id="btn-play-${g.id}" class="bg-bento-lime text-bento-black px-4 py-2 rounded-xl font-bold text-sm active:scale-95 transition-all">Guardar</button>
-                    </div>
-                </div>
+                   <div class="flex flex-col gap-3">
+  <select id="winner-select-${g.id}" class="w-full bg-white/10 text-white rounded-xl px-3 py-3 outline-none text-sm border border-white/20 focus:border-white">
+    <option value="" disabled selected>¿Quién ganó?</option>
+    <option value="none">Empate / Nadie (Solo sumar partida)</option>
+    ${playerOptions}
+  </select>
+
+  <button onclick="logPlayAndWin('${g.id}')" id="btn-play-${g.id}" class="w-full bg-bento-lime text-bento-black px-4 py-3 rounded-xl font-bold text-sm active:scale-95 transition-all">
+    Guardar
+  </button>
+</div>
+
                 <div class="bg-slate-50 rounded-2xl p-4 flex justify-between items-center mt-2 border border-slate-100">
                     <div class="flex flex-col">
                         <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Comunidad</span>
